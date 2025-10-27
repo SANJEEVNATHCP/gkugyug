@@ -121,6 +121,75 @@ def token_required(f):
     
     return decorated
 
+# ==================== SETUP ROUTE ====================
+
+@app.route('/api/setup', methods=['POST'])
+def setup_database():
+    """Initialize database with admin user and sample data"""
+    try:
+        # Check if already setup
+        if User.query.count() > 0:
+            return jsonify({'message': 'Database already initialized', 'status': 'already_setup'}), 200
+        
+        # Create admin user
+        admin = User(
+            username='admin',
+            email='admin@smartwater.com',
+            role='admin',
+            village='Tech Hub'
+        )
+        admin.set_password('admin123')
+        db.session.add(admin)
+        
+        # Create sample devices
+        devices = [
+            Device(device_id='BOAT001', device_name='Ganga Monitor 1', location='Varanasi', 
+                   latitude=25.3176, longitude=82.9739, battery_level=95),
+            Device(device_id='BOAT002', device_name='Krishna Monitor 1', location='Vijayawada', 
+                   latitude=16.5062, longitude=80.6480, battery_level=88),
+            Device(device_id='BOAT003', device_name='Yamuna Monitor 1', location='Delhi', 
+                   latitude=28.7041, longitude=77.1025, battery_level=92)
+        ]
+        for device in devices:
+            db.session.add(device)
+        
+        # Create sample water data
+        sample_data = [
+            WaterQualityData(device_id='BOAT001', location='Varanasi', ph_level=7.2, turbidity=3.5, 
+                            tds=450, temperature=25.5, dissolved_oxygen=7.8, contamination_level='safe'),
+            WaterQualityData(device_id='BOAT002', location='Vijayawada', ph_level=6.8, turbidity=8.2, 
+                            tds=620, temperature=27.3, dissolved_oxygen=5.5, contamination_level='warning', 
+                            is_contaminated=True),
+            WaterQualityData(device_id='BOAT003', location='Delhi', ph_level=8.9, turbidity=12.5, 
+                            tds=780, temperature=28.1, dissolved_oxygen=4.2, contamination_level='danger', 
+                            is_contaminated=True)
+        ]
+        for data in sample_data:
+            db.session.add(data)
+        
+        # Create sample alert
+        alert = Alert(
+            device_id='BOAT003',
+            location='Delhi',
+            alert_type='contamination',
+            severity='high',
+            message='High contamination detected. pH: 8.9, Turbidity: 12.5 NTU'
+        )
+        db.session.add(alert)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Database initialized successfully',
+            'status': 'success',
+            'admin_username': 'admin',
+            'admin_password': 'admin123'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Setup failed: {str(e)}'}), 500
+
 # ==================== AUTHENTICATION ROUTES ====================
 
 @app.route('/api/register', methods=['POST'])
